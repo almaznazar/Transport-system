@@ -1,0 +1,805 @@
+<title>Almora Bus Alerts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: sticky top bar with a role switch (Bus attendant / Parent / School office) and a demo clock.
+   Each role is one column on phones and two columns from 900px. Routes are drawn as a rail, like a printed bus route sheet. */
+:root{
+  --bg:#F1F3F7; --surface:#FFFFFF; --sunk:#E7EBF2; --ink:#16213A; --muted:#5A6680; --line:#D8DEE8;
+  --accent:#F2A900; --on-accent:#221800; --accent-soft:#FFF2CF; --accent-ink:#8A5F00;
+  --ok:#1C7F52; --ok-soft:#E0F2E9; --warn:#A96200; --warn-soft:#FCEFD9; --bad:#BE382E; --bad-soft:#FAE3E1; --info:#2B59AA; --info-soft:#E2EAF8;
+  --wa:#DCF5CC; --wa-ink:#11301A; --bar:#16213A; --shadow:0 1px 2px rgba(22,33,58,.06),0 6px 20px rgba(22,33,58,.06);
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:12px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1422; --surface:#151F33; --sunk:#1C2840; --ink:#E6EBF4; --muted:#98A4BD; --line:#27334C;
+  --accent:#F6BA2E; --on-accent:#1D1500; --accent-soft:#3A2E10; --accent-ink:#F6C95A;
+  --ok:#47BE86; --ok-soft:#163427; --warn:#EAA444; --warn-soft:#3A2B12; --bad:#F06C62; --bad-soft:#3D1D1C; --info:#7FA6F2; --info-soft:#1C2A48;
+  --wa:#1E3A27; --wa-ink:#DDF3E2; --bar:#080D18; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0D1422; --surface:#151F33; --sunk:#1C2840; --ink:#E6EBF4; --muted:#98A4BD; --line:#27334C;
+  --accent:#F6BA2E; --on-accent:#1D1500; --accent-soft:#3A2E10; --accent-ink:#F6C95A;
+  --ok:#47BE86; --ok-soft:#163427; --warn:#EAA444; --warn-soft:#3A2B12; --bad:#F06C62; --bad-soft:#3D1D1C; --info:#7FA6F2; --info-soft:#1C2A48;
+  --wa:#1E3A27; --wa-ink:#DDF3E2; --bar:#080D18; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bar)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h2{font-size:1.35rem;font-weight:700}
+h3{font-size:1.05rem;font-weight:600}
+.mono,.t{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+
+/* Top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bar);color:#F6F8FC;border-bottom:1px solid var(--line)}
+.top-in{display:flex;align-items:center;gap:12px 20px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand-mark{width:34px;height:34px;border-radius:9px;background:var(--accent);display:grid;place-items:center;flex:none}
+.brand-name{font-family:var(--f-display);font-weight:700;font-size:1.1rem;letter-spacing:.01em;color:#F6F8FC;line-height:1.1}
+.brand-sub{font-size:.75rem;color:#AEB8CC;letter-spacing:.04em}
+.roles{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:4px;border-radius:10px}
+.roles button{border:0;background:transparent;color:#C9D1E0;padding:7px 12px;border-radius:7px;font-weight:600;font-size:.9rem}
+.roles button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.clock{display:flex;align-items:center;gap:6px}
+.clock-face{font-family:var(--f-mono);font-weight:600;font-size:1.05rem;background:rgba(255,255,255,.08);padding:5px 10px;border-radius:8px;color:#F6F8FC;font-variant-numeric:tabular-nums}
+.clock-face small{font-family:var(--f-body);font-weight:500;font-size:.68rem;color:#AEB8CC;margin-left:6px;letter-spacing:.06em;text-transform:uppercase}
+.clock button{border:1px solid rgba(255,255,255,.18);background:transparent;color:#E6EBF4;border-radius:7px;padding:5px 9px;font-size:.82rem;font-weight:600}
+@media (max-width:640px){.roles{order:3;width:100%}.roles button{flex:1;padding:8px 6px}}
+
+main{padding-block:22px 60px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.page-head p{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink)}
+
+.grid2{display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:900px){.grid2{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.grid2.rev{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}}
+.stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+
+.seg{display:inline-flex;background:var(--sunk);border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font-weight:600;font-size:.88rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600;font-size:.9rem;display:inline-flex;align-items:center;gap:6px;justify-content:center}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{filter:brightness(.96)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.ghost-bad{color:var(--bad);border-color:var(--line)}
+.btn.ghost-bad:hover{border-color:var(--bad)}
+.btn.sm{padding:5px 10px;font-size:.82rem}
+.btn.big{padding:12px 18px;font-size:1rem;width:100%}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+.plate{display:inline-flex;align-items:stretch;border:1.5px solid var(--ink);border-radius:5px;font-family:var(--f-mono);font-weight:600;font-size:.78rem;overflow:hidden;line-height:1}
+.plate span{padding:4px 6px}
+.plate .em{background:var(--ink);color:var(--surface);font-size:.62rem;letter-spacing:.06em;display:grid;place-items:center}
+.code{font-family:var(--f-display);font-weight:700;background:var(--accent);color:var(--on-accent);border-radius:6px;padding:2px 8px;font-size:.95rem}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--info-soft);color:var(--info)}
+.pill.idle{background:var(--sunk);color:var(--muted)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.88rem;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+
+/* Route rail (attendant) */
+.rail{list-style:none;margin:0;padding:0;position:relative}
+.stop{position:relative;padding:0 0 18px 34px}
+.stop::before{content:"";position:absolute;left:10px;top:22px;bottom:-2px;width:2px;background:var(--line)}
+.stop:last-child::before{display:none}
+.stop.done::before{background:var(--ink)}
+.dot{position:absolute;left:2px;top:4px;width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.stop.done .dot{background:var(--ink);border-color:var(--ink)}
+.stop.cur .dot{border:5px solid var(--accent);background:var(--surface)}
+.stop-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.stop-name{font-weight:700;font-size:1rem}
+.stop-sched{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.stop-actual{font-family:var(--f-mono);font-size:.8rem;color:var(--ink);margin-top:2px}
+.stop-body{margin-top:10px;background:var(--sunk);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.stop.cur .stop-body{background:var(--accent-soft)}
+.kid{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:8px;padding:9px 10px;flex-wrap:wrap}
+.kid-name{font-weight:600;flex:1;min-width:140px}
+.kid-name small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.kid-acts{display:flex;gap:6px;flex-wrap:wrap}
+.stop-foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+
+/* Route strip (office) */
+.strip-wrap{overflow-x:auto;padding-bottom:4px}
+.strip{display:flex;align-items:flex-start;min-width:max-content;padding-top:4px}
+.sn{display:flex;flex-direction:column;align-items:center;width:104px;position:relative;text-align:center}
+.sn::after{content:"";position:absolute;top:8px;left:50%;width:100%;height:2px;background:var(--line);z-index:0}
+.sn:last-child::after{display:none}
+.sn.done::after{background:var(--ink)}
+.sn i{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);background:var(--surface);position:relative;z-index:1}
+.sn.done i{background:var(--ink);border-color:var(--ink)}
+.sn.cur i{border:5px solid var(--accent)}
+.sn b{font-size:.78rem;font-weight:600;margin-top:6px;line-height:1.2}
+.sn span{font-family:var(--f-mono);font-size:.72rem;color:var(--muted)}
+
+/* Notification feed */
+.feed{display:flex;flex-direction:column;gap:10px}
+.note{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.note .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center}
+.note .ic svg{width:17px;height:17px}
+.note.ok .ic{background:var(--ok-soft);color:var(--ok)}
+.note.warn .ic{background:var(--warn-soft);color:var(--warn)}
+.note.bad .ic{background:var(--bad-soft);color:var(--bad)}
+.note.info .ic{background:var(--info-soft);color:var(--info)}
+.note-t{font-weight:700;font-size:.93rem;line-height:1.3}
+.note-b{font-size:.88rem;color:var(--muted);margin-top:2px}
+.note-time{font-family:var(--f-mono);font-size:.74rem;color:var(--muted);float:right;margin-left:8px}
+.wa-thread{background:var(--sunk);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.wa-bubble{background:var(--wa);color:var(--wa-ink);border-radius:10px 10px 10px 2px;padding:9px 11px;max-width:92%;font-size:.88rem;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.wa-bubble .tm{display:block;text-align:right;font-size:.7rem;opacity:.7;font-family:var(--f-mono)}
+.mail{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.mail-h{background:var(--sunk);padding:9px 12px;font-size:.82rem;color:var(--muted)}
+.mail-h b{color:var(--ink)}
+.mail-b{padding:12px;font-size:.88rem;white-space:pre-wrap}
+.empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;font-size:.9rem}
+
+/* Child card */
+.child{border:1px solid var(--line);border-radius:var(--r);padding:16px;background:var(--surface)}
+.child-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.child-name{font-family:var(--f-display);font-weight:700;font-size:1.25rem}
+.log{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin-top:12px;font-size:.88rem}
+.log dt{color:var(--muted);font-weight:600;font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;padding-top:2px}
+.log dd{margin:0}
+.live{display:flex;gap:12px;align-items:flex-start;background:var(--accent-soft);border-radius:10px;padding:12px 14px}
+.live svg{flex:none;color:var(--accent-ink);margin-top:2px}
+.live b{display:block}
+.sched{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.sched div{background:var(--sunk);border-radius:8px;padding:10px 12px}
+.sched span{display:block;font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.sched b{font-family:var(--f-mono);font-size:1.05rem}
+
+/* Office */
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:760px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.kpi span{font-size:.78rem;color:var(--muted);font-weight:600}
+.kpi b{display:block;font-family:var(--f-display);font-size:1.9rem;font-weight:700;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi.warnk b{color:var(--warn)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{text-align:left;font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;background:var(--sunk);padding:9px 12px;white-space:nowrap}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:top}
+td.t,td .t{white-space:nowrap}
+td input[type=time]{padding:5px 6px;font-family:var(--f-mono);font-size:.85rem}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:10px 14px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button[aria-pressed="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.bus-card{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--surface)}
+.form{display:grid;gap:10px}
+.form label{font-size:.8rem;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.notes-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.9rem;max-width:70ch}
+.check{width:18px;height:18px;accent-color:var(--accent)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;font-size:.9rem;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--bad);color:#fff}
+.hint{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.88rem;background:var(--info-soft);color:var(--info);padding:10px 12px;border-radius:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#221800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3" fill="none"/><path d="M4 10h16M8 21v-4M16 21v-4"/><circle cx="8" cy="13.5" r="1" fill="#221800"/><circle cx="16" cy="13.5" r="1" fill="#221800"/></svg>
+      </div>
+      <div><div class="brand-name">Almora Bus Alerts</div><div class="brand-sub" id="schoolName">School transport</div></div>
+    </div>
+    <nav class="roles" aria-label="Choose a view">
+      <button data-act="role" data-v="attendant">Bus attendant</button>
+      <button data-act="role" data-v="parent">Parent</button>
+      <button data-act="role" data-v="office">School office</button>
+    </nav>
+    <div class="clock" aria-label="Demo clock">
+      <div class="clock-face"><span id="clock">06:25</span><small>demo</small></div>
+      <button data-act="clockRun" id="clockRun">Pause</button>
+      <button data-act="clockAdd" data-v="5">+5 min</button>
+    </div>
+  </div>
+</header>
+<main class="wrap" id="app"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+const LS='almora-bus-alerts-v1';
+const ICONS={
+  bus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"/><path d="M4 10h16M8 21v-4M16 21v-4"/></svg>',
+  ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>',
+  bad:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="14" rx="3"/><path d="M4 10h16M8 21v-4M16 21v-4"/></svg>',
+  pin:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>'
+};
+
+function seed(){
+  return {
+    school:'Greenfield International School',
+    office:'+971 4 555 0142',
+    areas:[
+      {id:'dg',name:'Discovery Gardens'},{id:'jlt',name:'Jumeirah Lake Towers'},{id:'brs',name:'Al Barsha'},
+      {id:'mdf',name:'Mirdif'},{id:'nhd',name:'Al Nahda'},{id:'qus',name:'Al Qusais'}
+    ],
+    buses:[
+      {id:'b07',code:'B-07',name:'West route',plate:'K 48213',driver:'Rajesh Kumar',attendant:'Fatima Al Hammadi',schoolAm:'07:35',schoolPm:'14:30',
+        stops:[
+          {areaId:'dg',am:{arr:'06:30',dep:'06:35'},pm:{arr:'15:30',dep:'15:35'}},
+          {areaId:'jlt',am:{arr:'06:45',dep:'06:50'},pm:{arr:'15:15',dep:'15:20'}},
+          {areaId:'brs',am:{arr:'07:00',dep:'07:05'},pm:{arr:'15:00',dep:'15:05'}}]},
+      {id:'b12',code:'B-12',name:'East route',plate:'L 20977',driver:'Imran Sheikh',attendant:'Grace Mathew',schoolAm:'07:35',schoolPm:'14:30',
+        stops:[
+          {areaId:'mdf',am:{arr:'06:40',dep:'06:45'},pm:{arr:'15:20',dep:'15:25'}},
+          {areaId:'nhd',am:{arr:'06:55',dep:'07:00'},pm:{arr:'15:05',dep:'15:10'}},
+          {areaId:'qus',am:{arr:'07:10',dep:'07:15'},pm:{arr:'14:50',dep:'14:55'}}]}
+    ],
+    parents:[
+      {id:'p1',name:'Nadia Rahman',phone:'+971 50 214 7781',email:'nadia.rahman@example.ae',ch:{app:true,wa:true,email:true}},
+      {id:'p2',name:'Suresh Nair',phone:'+971 55 306 1194',email:'suresh.nair@example.ae',ch:{app:true,wa:true,email:false}},
+      {id:'p3',name:'Khalid Al Mansoori',phone:'+971 50 778 2210',email:'k.almansoori@example.ae',ch:{app:true,wa:false,email:true}},
+      {id:'p4',name:'Rania Haddad',phone:'+971 52 640 3387',email:'rania.haddad@example.ae',ch:{app:true,wa:true,email:true}},
+      {id:'p5',name:'Deepa Menon',phone:'+971 56 118 9042',email:'deepa.menon@example.ae',ch:{app:true,wa:true,email:false}},
+      {id:'p6',name:'Tariq Khan',phone:'+971 50 992 4416',email:'tariq.khan@example.ae',ch:{app:true,wa:true,email:false}},
+      {id:'p7',name:'Hina Siddiqui',phone:'+971 55 471 0058',email:'hina.siddiqui@example.ae',ch:{app:true,wa:false,email:true}},
+      {id:'p8',name:'Anil Pillai',phone:'+971 52 233 6871',email:'anil.pillai@example.ae',ch:{app:true,wa:true,email:false}},
+      {id:'p9',name:"Maria D'Souza",phone:'+971 56 804 1123',email:'maria.dsouza@example.ae',ch:{app:true,wa:true,email:true}},
+      {id:'p10',name:'Ahmed Farooq',phone:'+971 50 365 7720',email:'ahmed.farooq@example.ae',ch:{app:true,wa:true,email:false}},
+      {id:'p11',name:'Salma Ali',phone:'+971 55 912 3346',email:'salma.ali@example.ae',ch:{app:true,wa:false,email:true}}
+    ],
+    students:[
+      {id:'s1',name:'Aisha Rahman',grade:'Grade 3',busId:'b07',areaId:'dg',parentId:'p1'},
+      {id:'s2',name:'Ibrahim Rahman',grade:'Grade 6',busId:'b07',areaId:'dg',parentId:'p1'},
+      {id:'s3',name:'Priya Nair',grade:'Grade 5',busId:'b07',areaId:'jlt',parentId:'p2'},
+      {id:'s4',name:'Sara Al Mansoori',grade:'Grade 2',busId:'b07',areaId:'jlt',parentId:'p3'},
+      {id:'s5',name:'Lina Haddad',grade:'Grade 7',busId:'b07',areaId:'brs',parentId:'p4'},
+      {id:'s6',name:'Arjun Menon',grade:'Grade 4',busId:'b07',areaId:'brs',parentId:'p5'},
+      {id:'s7',name:'Yusuf Khan',grade:'Grade 1',busId:'b12',areaId:'mdf',parentId:'p6'},
+      {id:'s8',name:'Omar Siddiqui',grade:'Grade 8',busId:'b12',areaId:'mdf',parentId:'p7'},
+      {id:'s9',name:'Rohan Pillai',grade:'Grade 5',busId:'b12',areaId:'nhd',parentId:'p8'},
+      {id:'s10',name:"Ethan D'Souza",grade:'Grade 3',busId:'b12',areaId:'nhd',parentId:'p9'},
+      {id:'s11',name:'Mariam Farooq',grade:'Grade 6',busId:'b12',areaId:'qus',parentId:'p10'},
+      {id:'s12',name:'Zainab Ali',grade:'Grade 2',busId:'b12',areaId:'qus',parentId:'p11'}
+    ],
+    trips:{},
+    notifs:[],
+    clock:6*60+25
+  };
+}
+
+let S, ui={role:'attendant',busId:'b07',tripType:'am',parentId:'p1',feedCh:'app',officeTab:'overview',outCh:'all',clockRun:true,confirmReset:false,keepMenu:null};
+function load(){
+  try{const raw=localStorage.getItem(LS); if(raw){const d=JSON.parse(raw); if(d&&d.S&&d.S.buses){S=d.S; Object.assign(ui,d.ui||{},{confirmReset:false,keepMenu:null}); return;}}}catch(e){}
+  S=seed();
+}
+function save(){try{localStorage.setItem(LS,JSON.stringify({S,ui:{role:ui.role,busId:ui.busId,tripType:ui.tripType,parentId:ui.parentId,feedCh:ui.feedCh,officeTab:ui.officeTab}}))}catch(e){}}
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const toMin=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m};
+const fmt=m=>{if(m==null)return '—';m=Math.floor(m+1e-6);const h=Math.floor(m/60)%24,mm=((m%60)+60)%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0')};
+const now=()=>S.clock;
+const aname=id=>(S.areas.find(a=>a.id===id)||{}).name||'School';
+const bus=id=>S.buses.find(b=>b.id===id);
+const stu=id=>S.students.find(s=>s.id===id);
+const par=id=>S.parents.find(p=>p.id===id);
+const first=n=>n.split(' ')[0];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const kidsOn=busId=>S.students.filter(s=>s.busId===busId);
+const kidsAt=(busId,areaId)=>S.students.filter(s=>s.busId===busId&&s.areaId===areaId);
+const names=ks=>{const n=ks.map(k=>first(k.name));return n.length<2?n.join(''):n.slice(0,-1).join(', ')+' and '+n[n.length-1]};
+function byParent(ks){const m=new Map();ks.forEach(s=>{if(!m.has(s.parentId))m.set(s.parentId,[]);m.get(s.parentId).push(s)});return m}
+function delayText(d){d=Math.round(d);if(d>=3)return `running ${d} min late`;if(d<=-3)return `${-d} min early`;return 'on time'}
+function stopOf(b,areaId){return b.stops.find(s=>s.areaId===areaId)}
+
+function stops(b,type){
+  if(type==='am') return [...b.stops.map(s=>({kind:'area',areaId:s.areaId,arr:s.am.arr,dep:s.am.dep})),{kind:'school',areaId:null,arr:b.schoolAm,dep:null}];
+  const pm=[...b.stops].sort((x,y)=>toMin(x.pm.arr)-toMin(y.pm.arr));
+  return [{kind:'school',areaId:null,arr:null,dep:b.schoolPm},...pm.map(s=>({kind:'area',areaId:s.areaId,arr:s.pm.arr,dep:s.pm.dep}))];
+}
+const getTrip=(busId,type)=>(S.trips[busId]||{})[type]||null;
+function tripDelay(b,type,t){
+  if(!t)return 0;const st=stops(b,type);let d=0;
+  t.log.forEach((l,i)=>{if(l.arr!=null&&st[i].arr)d=l.arr-toMin(st[i].arr);if(l.dep!=null&&st[i].dep)d=l.dep-toMin(st[i].dep)});
+  return Math.round(d);
+}
+const K=(t,sid)=>(t&&t.kids[sid])||{};
+
+/* ---------- notifications ---------- */
+function push(parentId,o){
+  const p=par(parentId);if(!p)return;
+  const ch=['app'];if(p.ch.wa)ch.push('wa');if(p.ch.email)ch.push('email');
+  S.notifs.unshift({id:uid(),t:now(),parentId,kind:o.kind||'info',title:o.title,body:o.body,busId:o.busId||null,ch});
+}
+
+/* ---------- trip actions ---------- */
+function startTrip(busId,type){
+  const b=bus(busId),st=stops(b,type);
+  if(type==='pm'){const am=getTrip(busId,'am'); if(am&&am.status==='running') return 'Finish the morning trip first.';}
+  const t={status:'running',idx:0,log:st.map(()=>({arr:null,dep:null})),kids:{},startedAt:now()};
+  (S.trips[busId]=S.trips[busId]||{})[type]=t;
+  if(type==='am'){
+    byParent(kidsOn(busId)).forEach((ks,pid)=>{
+      const s0=stopOf(b,ks[0].areaId);
+      push(pid,{kind:'info',busId,title:`Bus ${b.code} has started the morning route`,
+        body:`The bus left the depot at ${fmt(now())}. Scheduled pickup at ${aname(ks[0].areaId)}: ${s0.am.arr}. You will get another alert when the bus heads to your stop.`});
+    });
+  } else {
+    t.log[0].arr=now();
+  }
+}
+function arrive(busId,type,i){
+  const b=bus(busId),t=getTrip(busId,type),st=stops(b,type),s=st[i];
+  t.log[i].arr=now();
+  const d=now()-toMin(s.arr);
+  if(s.kind==='area'){
+    const ks=type==='am'?kidsAt(busId,s.areaId):kidsAt(busId,s.areaId).filter(k=>K(t,k.id).in);
+    byParent(ks).forEach((k,pid)=>push(pid,{kind:d>=10?'warn':'info',busId,
+      title:`Bus ${b.code} has arrived at ${aname(s.areaId)}`,
+      body:type==='am'
+        ?`The bus reached your stop at ${fmt(now())} (${delayText(d)}). Please bring ${names(k)} to the bus now. It leaves at about ${fmt(Math.max(now()+5,toMin(s.dep)))}.`
+        :`The bus reached ${aname(s.areaId)} at ${fmt(now())} (${delayText(d)}). Please be at the stop to receive ${names(k)}.`}));
+  } else {
+    const boarded=kidsOn(busId).filter(k=>K(t,k.id).in);
+    boarded.forEach(k=>{t.kids[k.id].out={t:now(),at:null}});
+    byParent(boarded).forEach((k,pid)=>push(pid,{kind:'ok',busId,
+      title:`${names(k)} reached school`,
+      body:`${names(k)} got off bus ${b.code} at school at ${fmt(now())}. Attendance is marked present.`}));
+    t.status='done';t.idx=st.length;
+  }
+}
+function board(busId,type,sid){
+  const b=bus(busId),t=getTrip(busId,type),k=stu(sid);
+  t.kids[sid]=Object.assign({},t.kids[sid],{in:{t:now(),at:type==='am'?k.areaId:null}});
+  push(k.parentId,{kind:'ok',busId,
+    title:type==='am'?`${first(k.name)} boarded the bus`:`${first(k.name)} boarded the bus home`,
+    body:type==='am'
+      ?`${k.name} boarded bus ${b.code} at ${aname(k.areaId)} at ${fmt(now())}. You will be notified when ${first(k.name)} reaches school.`
+      :`${k.name} boarded bus ${b.code} at school at ${fmt(now())}. Scheduled drop at ${aname(k.areaId)}: ${stopOf(b,k.areaId).pm.arr}.`});
+}
+function absent(busId,type,sid,auto){
+  const b=bus(busId),t=getTrip(busId,type),k=stu(sid);
+  t.kids[sid]=Object.assign({},t.kids[sid],{absent:{t:now(),auto:!!auto}});
+  if(type==='am'){
+    push(k.parentId,{kind:'warn',busId,title:`${first(k.name)} did not board at ${aname(k.areaId)}`,
+      body:`${k.name} was not at the stop when bus ${b.code} left at ${fmt(now())}. If ${first(k.name)} is going to school another way, no action is needed. Otherwise please call the transport office on ${S.office}.`});
+  } else {
+    push(k.parentId,{kind:'bad',busId,title:`${first(k.name)} is not on the bus home`,
+      body:`${k.name} did not board bus ${b.code} when it left school at ${fmt(now())}. The school office has been alerted and will contact you. Office: ${S.office}.`});
+  }
+}
+function drop(busId,sid){
+  const b=bus(busId),t=getTrip(busId,'pm'),k=stu(sid);
+  t.kids[sid].out={t:now(),at:k.areaId};
+  push(k.parentId,{kind:'ok',busId,title:`${first(k.name)} was dropped at ${aname(k.areaId)}`,
+    body:`${k.name} got off bus ${b.code} at ${aname(k.areaId)} at ${fmt(now())} and was handed over at the stop.`});
+}
+function keep(busId,sid){
+  const b=bus(busId),t=getTrip(busId,'pm'),k=stu(sid);
+  t.kids[sid].kept={t:now(),at:k.areaId};
+  push(k.parentId,{kind:'bad',busId,title:`${first(k.name)} is still on the bus`,
+    body:`No one was at the ${aname(k.areaId)} stop to receive ${k.name} at ${fmt(now())}. ${first(k.name)} is staying on the bus with attendant ${b.attendant} and will return to school. The transport office will call you.`});
+}
+function depart(busId,type,i){
+  const b=bus(busId),t=getTrip(busId,type),st=stops(b,type),s=st[i];
+  if(type==='am'&&s.kind==='area'){
+    kidsAt(busId,s.areaId).filter(k=>!K(t,k.id).in&&!K(t,k.id).absent).forEach(k=>absent(busId,'am',k.id,true));
+  }
+  if(type==='pm'&&s.kind==='school'){
+    kidsOn(busId).filter(k=>!K(t,k.id).in&&!K(t,k.id).absent).forEach(k=>absent(busId,'pm',k.id,true));
+  }
+  if(type==='pm'&&s.kind==='area'){
+    const pending=kidsAt(busId,s.areaId).filter(k=>K(t,k.id).in&&!K(t,k.id).out&&!K(t,k.id).kept);
+    if(pending.length) return `Mark ${names(pending)} as dropped or kept on the bus before leaving.`;
+  }
+  t.log[i].dep=now();t.idx=i+1;
+  const d=now()-toMin(s.dep);
+  const n=st[i+1];
+  const here=s.kind==='school'?'school':aname(s.areaId);
+  let nextIds=[];
+  if(n&&n.kind==='area'){
+    const eta=toMin(n.arr)+Math.max(0,d);
+    const ks=type==='am'?kidsAt(busId,n.areaId).filter(k=>!K(t,k.id).absent):kidsAt(busId,n.areaId).filter(k=>K(t,k.id).in);
+    nextIds=ks.map(k=>k.id);
+    byParent(ks).forEach((k,pid)=>push(pid,{kind:d>=10?'warn':'info',busId,
+      title:`Bus ${b.code} is heading to ${aname(n.areaId)}`,
+      body:`The bus left ${here} at ${fmt(now())}. Expected at ${aname(n.areaId)} around ${fmt(eta)} (scheduled ${n.arr}, ${delayText(d)}).`+(type==='am'?` Please have ${names(k)} ready at the stop.`:` Please be at the stop to receive ${names(k)}.`)}));
+  }
+  if(type==='pm'&&s.kind==='school'){
+    const ks=kidsOn(busId).filter(k=>K(t,k.id).in&&!nextIds.includes(k.id));
+    byParent(ks).forEach((k,pid)=>{
+      const eta=toMin(stopOf(b,k[0].areaId).pm.arr)+Math.max(0,d);
+      push(pid,{kind:d>=10?'warn':'info',busId,title:`Bus ${b.code} has left school`,
+        body:`${names(k)} ${k.length>1?'are':'is'} on the way home. Expected at ${aname(k[0].areaId)} around ${fmt(eta)} (${delayText(d)}).`});
+    });
+  }
+  if(type==='pm'&&i===st.length-1) t.status='done';
+}
+function broadcast(busId,areaId,msg){
+  let ks=S.students;
+  if(busId!=='all')ks=ks.filter(k=>k.busId===busId);
+  if(areaId!=='all')ks=ks.filter(k=>k.areaId===areaId);
+  const b=busId!=='all'?bus(busId):null;
+  byParent(ks).forEach((k,pid)=>push(pid,{kind:'warn',busId:b?b.id:null,title:`Notice from ${S.school} transport`,body:msg}));
+  return byParent(ks).size;
+}
+
+/* ---------- status for a student ---------- */
+function status(k){
+  const am=getTrip(k.busId,'am'),pm=getTrip(k.busId,'pm'),a=K(am,k.id),p=K(pm,k.id);
+  if(p.kept)return{c:'bad',t:'Kept on bus'};
+  if(p.out)return{c:'ok',t:`Dropped at ${aname(k.areaId)}`};
+  if(p.absent)return{c:'bad',t:'Not on the bus home'};
+  if(p.in)return{c:'info',t:'On the bus home'};
+  if(a.absent)return{c:'warn',t:'Did not board this morning'};
+  if(a.out)return{c:'ok',t:'At school'};
+  if(a.in)return{c:'info',t:'On the bus to school'};
+  if(am&&am.status==='running')return{c:'acc',t:'Bus on the way'};
+  return{c:'idle',t:'Waiting for morning bus'};
+}
+
+/* ---------- live line for parents ---------- */
+function liveFor(b,areaId){
+  const types=['pm','am'];
+  for(const type of types){
+    const t=getTrip(b.id,type);if(!t)continue;
+    const st=stops(b,type),my=st.findIndex(s=>s.areaId===areaId),d=tripDelay(b,type,t);
+    if(t.status==='done'){
+      if(type==='am'){const sch=t.log[st.length-1].arr;return{h:'Morning trip complete',s:`Bus ${b.code} reached school at ${fmt(sch)}. Afternoon departure from school: ${b.schoolPm}.`}}
+      return{h:'Afternoon trip complete',s:`Bus ${b.code} finished its drop-off route.`};
+    }
+    const last=lastEvent(b,type,t);
+    if(t.idx<my||(t.idx===my&&t.log[my].arr==null)){
+      const eta=toMin(st[my].arr)+Math.max(0,d);
+      return{h:`Expected at ${aname(areaId)} around ${fmt(eta)}`,s:`${last}. Scheduled ${st[my].arr}, ${delayText(d)}.`};
+    }
+    if(t.idx===my)return{h:`Bus ${b.code} is at your stop now`,s:`Arrived at ${fmt(t.log[my].arr)}.`};
+    if(type==='am')return{h:'Heading to school',s:`Left ${aname(areaId)} at ${fmt(t.log[my].dep)}. Scheduled arrival at school ${b.schoolAm}.`};
+    return{h:'Bus has passed your stop',s:last};
+  }
+  const s=stopOf(b,areaId);
+  return{h:`Morning pickup at ${s.am.arr}`,s:`Bus ${b.code} has not started its route yet.`};
+}
+function lastEvent(b,type,t){
+  const st=stops(b,type);let out=`Bus ${b.code} started its route at ${fmt(t.startedAt)}`;
+  t.log.forEach((l,i)=>{const n=st[i].kind==='school'?'school':aname(st[i].areaId);
+    if(l.arr!=null&&!(type==='pm'&&i===0))out=`Bus ${b.code} reached ${n} at ${fmt(l.arr)}`;
+    if(l.dep!=null)out=`Bus ${b.code} left ${n} at ${fmt(l.dep)}`;});
+  return out;
+}
+
+/* ---------- render ---------- */
+function render(){
+  document.querySelectorAll('.roles button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===ui.role));
+  $('#schoolName').textContent=S.school;
+  renderClock();
+  const app=$('#app');
+  app.innerHTML=ui.role==='attendant'?vAttendant():ui.role==='parent'?vParent():vOffice();
+}
+function renderClock(){$('#clock').textContent=fmt(S.clock);$('#clockRun').textContent=ui.clockRun?'Pause':'Run'}
+
+function busSeg(){return `<div class="seg" role="group" aria-label="Bus">${S.buses.map(b=>`<button data-act="bus" data-v="${b.id}" aria-pressed="${ui.busId===b.id}">${esc(b.code)} · ${esc(b.name)}</button>`).join('')}</div>`}
+function plate(p){const [l,n]=p.split(' ');return `<span class="plate" title="Dubai plate ${esc(p)}"><span class="em">DXB</span><span>${esc(l)}</span><span>${esc(n)}</span></span>`}
+
+function vAttendant(){
+  const b=bus(ui.busId),type=ui.tripType,t=getTrip(b.id,type),st=stops(b,type);
+  const clockHint=(type==='pm'&&now()<13*60)?`<div class="hint">The demo clock is at ${fmt(now())}. <button class="btn sm" data-act="clockSet" data-v="${14*60+25}">Set clock to 14:25</button></div>`
+    :(type==='am'&&now()>12*60&&!t)?`<div class="hint">The demo clock is at ${fmt(now())}. <button class="btn sm" data-act="clockSet" data-v="${6*60+25}">Set clock to 06:25</button></div>`:'';
+  let body;
+  if(!t){
+    body=`<div class="stack">
+      <p class="muted" style="margin:0">${type==='am'?'Starting the route tells every parent on this bus that the bus is on its way, with their scheduled pickup time.':'Start the afternoon trip at school, then mark each child as they board.'}</p>
+      <ol class="rail">${st.map((s,i)=>stopRow(b,type,null,s,i)).join('')}</ol>
+      <button class="btn primary big" data-act="start">${type==='am'?'Start morning route':'Start afternoon trip at school'}</button>
+    </div>`;
+  } else {
+    body=`<ol class="rail">${st.map((s,i)=>stopRow(b,type,t,s,i)).join('')}</ol>
+      ${t.status==='done'?`<div class="stop-foot"><span class="pill ok">Trip complete</span><button class="btn sm" data-act="resetTrip">Reset this trip</button></div>`:''}`;
+  }
+  const d=tripDelay(b,type,t);
+  return `<div class="page-head"><div><div class="eyebrow">Bus attendant app</div><h2>${type==='am'?'Morning pickup':'Afternoon drop-off'}</h2>
+    <p>Tap each step as it happens on the road. Every tap sends the right parents an alert by app, WhatsApp and email.</p></div></div>
+  <div class="grid2">
+    <div class="stack">
+      <div class="panel">
+        <div class="panel-head">${busSeg()}
+          <div class="seg" role="group" aria-label="Trip"><button data-act="ttype" data-v="am" aria-pressed="${type==='am'}">Morning</button><button data-act="ttype" data-v="pm" aria-pressed="${type==='pm'}">Afternoon</button></div></div>
+        <div class="meta"><span class="code">${esc(b.code)}</span>${plate(b.plate)}<span>Driver <b>${esc(b.driver)}</b></span><span>Attendant <b>${esc(b.attendant)}</b></span>
+          ${t&&t.status==='running'?`<span class="pill ${d>=10?'warn':d>=3?'acc':'ok'}">${delayText(d).replace(/^./,c=>c.toUpperCase())}</span>`:''}</div>
+      </div>
+      ${clockHint}
+      <div class="panel">${body}</div>
+    </div>
+    <div class="stack">
+      <div class="panel"><div class="panel-head"><h3>Alerts sent from this bus</h3><span class="muted small">latest first</span></div>
+        ${feedList(S.notifs.filter(n=>n.busId===b.id).slice(0,8),'app',true)}</div>
+    </div>
+  </div>`;
+}
+function stopRow(b,type,t,s,i){
+  const name=s.kind==='school'?esc(S.school):esc(aname(s.areaId));
+  const sched=s.kind==='school'?(type==='am'?`arrive ${s.arr}`:`depart ${s.dep}`):`${s.arr} – ${s.dep}`;
+  const log=t?t.log[i]:{};
+  const done=t&&(i<t.idx||t.status==='done');
+  const cur=t&&t.status==='running'&&i===t.idx;
+  const kids=s.kind==='area'?kidsAt(b.id,s.areaId):(type==='pm'?kidsOn(b.id):[]);
+  let actual='';
+  if(t&&(log.arr!=null||log.dep!=null)){
+    const parts=[];if(log.arr!=null&&!(type==='pm'&&i===0))parts.push(`arrived ${fmt(log.arr)}`);if(log.dep!=null)parts.push(`left ${fmt(log.dep)}`);
+    if(parts.length)actual=`<div class="stop-actual">${parts.join(' · ')}</div>`;
+  }
+  let inner='';
+  if(!t){inner=s.kind==='area'?`<div class="muted small">${kids.length} student${kids.length!==1?'s':''}: ${esc(kids.map(k=>k.name).join(', '))}</div>`:'';}
+  else if(cur){inner=curBody(b,type,t,s,i,kids)}
+  else if(done){inner=doneSummary(type,t,s,kids)}
+  else if(s.kind==='area'){inner=`<div class="muted small">${kids.length} student${kids.length!==1?'s':''}</div>`}
+  return `<li class="stop ${done?'done':''} ${cur?'cur':''}"><span class="dot"></span>
+    <div class="stop-head"><span class="stop-name">${name}</span><span class="stop-sched">${sched}</span></div>${actual}${inner}</li>`;
+}
+function doneSummary(type,t,s,kids){
+  if(s.kind==='school'&&type==='am'){const n=Object.values(t.kids).filter(x=>x.out).length;return `<div class="muted small">${n} student${n!==1?'s':''} dropped at school</div>`}
+  const chips=kids.map(k=>{const x=K(t,k.id);
+    if(type==='am')return x.in?`<span class="pill ok">${esc(first(k.name))} IN ${fmt(x.in.t)}</span>`:x.absent?`<span class="pill warn">${esc(first(k.name))} absent</span>`:'';
+    if(s.kind==='school')return x.in?`<span class="pill ok">${esc(first(k.name))} IN ${fmt(x.in.t)}</span>`:x.absent?`<span class="pill bad">${esc(first(k.name))} not on bus</span>`:'';
+    return x.out?`<span class="pill ok">${esc(first(k.name))} OUT ${fmt(x.out.t)}</span>`:x.kept?`<span class="pill bad">${esc(first(k.name))} kept on bus</span>`:'';
+  }).join('');
+  return chips?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${chips}</div>`:'';
+}
+function curBody(b,type,t,s,i,kids){
+  const log=t.log[i];
+  // needs arrival
+  if(s.kind==='area'&&log.arr==null){
+    return `<div class="stop-body"><div class="small">${kids.length} student${kids.length!==1?'s':''} at this stop. Parents are told when you arrive.</div>
+      <button class="btn primary" data-act="arrive" data-i="${i}">Arrived at ${esc(aname(s.areaId))}</button></div>`;
+  }
+  if(s.kind==='school'&&type==='am'){
+    const n=kidsOn(b.id).filter(k=>K(t,k.id).in).length;
+    return `<div class="stop-body"><div class="small">${n} student${n!==1?'s':''} on board. Arriving marks them all as reached school.</div>
+      <button class="btn primary" data-act="arrive" data-i="${i}">Arrived at school, drop all</button></div>`;
+  }
+  let rows='';
+  if(type==='am'){
+    rows=kids.map(k=>{const x=K(t,k.id);
+      const st=x.in?`<span class="pill ok">IN ${fmt(x.in.t)}</span>`:x.absent?`<span class="pill warn">Absent</span>`
+        :`<div class="kid-acts"><button class="btn ok sm" data-act="board" data-s="${k.id}">Boarded</button><button class="btn ghost-bad sm" data-act="absent" data-s="${k.id}">Absent</button></div>`;
+      return kidRow(k,st);}).join('');
+    const pending=kids.filter(k=>!K(t,k.id).in&&!K(t,k.id).absent).length;
+    return `<div class="stop-body">${rows}<div class="stop-foot"><span class="small muted">${pending?`${pending} not marked. Leaving marks them absent.`:'All students marked.'}</span>
+      <button class="btn primary" data-act="depart" data-i="${i}">Leave ${esc(aname(s.areaId))}</button></div></div>`;
+  }
+  if(s.kind==='school'){
+    rows=kids.map(k=>{const x=K(t,k.id),am=K(getTrip(b.id,'am'),k.id);
+      const note=am.absent?' · absent this morning':'';
+      const st=x.in?`<span class="pill ok">IN ${fmt(x.in.t)}</span>`:x.absent?`<span class="pill bad">Not on bus</span>`
+        :`<div class="kid-acts"><button class="btn ok sm" data-act="board" data-s="${k.id}">Boarded</button><button class="btn ghost-bad sm" data-act="absent" data-s="${k.id}">Not on bus</button></div>`;
+      return kidRow(k,st,note);}).join('');
+    const pending=kids.filter(k=>!K(t,k.id).in&&!K(t,k.id).absent).length;
+    return `<div class="stop-body">${rows}<div class="stop-foot"><span class="small muted">${pending?`${pending} not marked. Leaving alerts their parents and the office.`:'All students marked.'}</span>
+      <button class="btn primary" data-act="depart" data-i="${i}">Leave school</button></div></div>`;
+  }
+  rows=kids.map(k=>{const x=K(t,k.id);
+    if(!x.in)return kidRow(k,`<span class="pill idle">Not on bus</span>`);
+    const st=x.out?`<span class="pill ok">OUT ${fmt(x.out.t)}</span>`:x.kept?`<span class="pill bad">Kept on bus</span>`
+      :`<div class="kid-acts"><button class="btn ok sm" data-act="drop" data-s="${k.id}">Handed over</button><button class="btn ghost-bad sm" data-act="keep" data-s="${k.id}">No one at stop</button></div>`;
+    return kidRow(k,st);}).join('');
+  return `<div class="stop-body">${rows}<div class="stop-foot"><span class="small muted">Hand each child to a parent or guardian.</span>
+    <button class="btn primary" data-act="depart" data-i="${i}">Leave ${esc(aname(s.areaId))}</button></div></div>`;
+}
+function kidRow(k,right,note){const p=par(k.parentId);return `<div class="kid"><div class="kid-name">${esc(k.name)}<small>${esc(k.grade)} · ${esc(p.name)}${esc(note||'')}</small></div>${right}</div>`}
+
+/* ---------- parent ---------- */
+function vParent(){
+  const p=par(ui.parentId),kids=S.students.filter(s=>s.parentId===p.id);
+  const pairs=[];kids.forEach(k=>{if(!pairs.some(x=>x.busId===k.busId&&x.areaId===k.areaId))pairs.push({busId:k.busId,areaId:k.areaId})});
+  const mine=S.notifs.filter(n=>n.parentId===p.id);
+  const opts=S.parents.map(x=>`<option value="${x.id}" ${x.id===p.id?'selected':''}>${esc(x.name)} (${S.students.filter(s=>s.parentId===x.id).map(s=>first(s.name)).join(', ')})</option>`).join('');
+  return `<div class="page-head"><div><div class="eyebrow">Parent app</div><h2>Good ${now()<12*60?'morning':'afternoon'}, ${esc(first(p.name))}</h2>
+    <p>Where your child's bus is, and every boarding and drop-off, as it happens.</p></div>
+    <label class="small muted" style="display:flex;flex-direction:column;gap:4px">Viewing as parent<select id="parentSel">${opts}</select></label></div>
+  <div class="grid2 rev">
+    <div class="stack">
+      ${pairs.map(pr=>{const b=bus(pr.busId),l=liveFor(b,pr.areaId),s=stopOf(b,pr.areaId);
+        return `<div class="panel"><div class="panel-head"><h3>Bus ${esc(b.code)} · ${esc(aname(pr.areaId))}</h3>${plate(b.plate)}</div>
+          <div class="live">${ICONS.pin}<div><b>${esc(l.h)}</b><span class="small">${esc(l.s)}</span></div></div>
+          <div class="sched"><div><span>Morning pickup</span><b>${s.am.arr}</b> <span style="display:inline;text-transform:none;letter-spacing:0">leaves ${s.am.dep}</span></div>
+          <div><span>Afternoon drop</span><b>${s.pm.arr}</b> <span style="display:inline;text-transform:none;letter-spacing:0">school leaves ${b.schoolPm}</span></div></div>
+          <div class="meta" style="margin-top:12px"><span>Attendant <b>${esc(b.attendant)}</b></span><span>Office <b class="mono">${esc(S.office)}</b></span></div></div>`}).join('')}
+      ${kids.map(k=>childCard(k)).join('')}
+    </div>
+    <div class="panel"><div class="panel-head"><h3>Notifications</h3>
+      <div class="seg" role="group" aria-label="Channel preview">
+        <button data-act="feed" data-v="app" aria-pressed="${ui.feedCh==='app'}">App</button>
+        <button data-act="feed" data-v="wa" aria-pressed="${ui.feedCh==='wa'}">WhatsApp</button>
+        <button data-act="feed" data-v="email" aria-pressed="${ui.feedCh==='email'}">Email</button></div></div>
+      ${ui.feedCh!=='app'&&!p.ch[ui.feedCh]?`<div class="empty">${esc(first(p.name))} has ${ui.feedCh==='wa'?'WhatsApp':'email'} alerts turned off. Change this in School office › Parents.</div>`:feedList(mine,ui.feedCh,false,p)}
+    </div>
+  </div>`;
+}
+function childCard(k){
+  const b=bus(k.busId),am=K(getTrip(k.busId,'am'),k.id),pm=K(getTrip(k.busId,'pm'),k.id),st=status(k);
+  const amTxt=am.absent?`Did not board at ${aname(k.areaId)} (${fmt(am.absent.t)})`:am.in?`Boarded ${fmt(am.in.t)} at ${aname(k.areaId)}${am.out?` · reached school ${fmt(am.out.t)}`:''}`:'Not yet';
+  const pmTxt=pm.absent?`Did not board at school (${fmt(pm.absent.t)})`:pm.in?`Boarded ${fmt(pm.in.t)} at school${pm.out?` · dropped ${fmt(pm.out.t)} at ${aname(k.areaId)}`:pm.kept?` · kept on bus ${fmt(pm.kept.t)}`:''}`:'Not yet';
+  return `<div class="child"><div class="child-top"><div><div class="child-name">${esc(k.name)}</div><div class="muted small">${esc(k.grade)} · Bus ${esc(b.code)} · ${esc(aname(k.areaId))}</div></div><span class="pill ${st.c}">${esc(st.t)}</span></div>
+    <dl class="log"><dt>Morning</dt><dd class="small">${esc(amTxt)}</dd><dt>Afternoon</dt><dd class="small">${esc(pmTxt)}</dd></dl></div>`;
+}
+function feedList(list,ch,compact,p){
+  if(!list.length)return `<div class="empty">${compact?'No alerts yet. Start a route to send the first one.':'No notifications yet today. Alerts appear here when the bus attendant starts the route.'}</div>`;
+  if(ch==='wa'){
+    return `<div class="wa-thread">${list.slice().reverse().map(n=>`<div class="wa-bubble">*${esc(S.school)} Transport*\n${esc(n.title)}\n\n${esc(n.body)}<span class="tm">${fmt(n.t)}</span></div>`).join('')}</div>`;
+  }
+  if(ch==='email'){
+    return `<div class="feed">${list.map(n=>{const pp=p||par(n.parentId);const b=n.busId?bus(n.busId):null;
+      return `<div class="mail"><div class="mail-h"><div>To <b>${esc(pp.email)}</b> · <span class="mono">${fmt(n.t)}</span></div><div>Subject <b>${b?`[Bus ${esc(b.code)}] `:''}${esc(n.title)}</b></div></div>
+      <div class="mail-b">Dear ${esc(pp.name)},\n\n${esc(n.body)}\n\nRegards,\n${esc(S.school)} Transport Office\n${esc(S.office)}</div></div>`}).join('')}</div>`;
+  }
+  return `<div class="feed">${list.map(n=>`<div class="note ${n.kind}"><div class="ic">${ICONS[n.kind]||ICONS.info}</div><div><span class="note-time">${fmt(n.t)}</span><div class="note-t">${esc(n.title)}</div>
+    <div class="note-b">${esc(n.body)}</div>${compact?`<div class="small muted" style="margin-top:4px">To ${esc(par(n.parentId).name)} · ${n.ch.map(c=>({app:'App',wa:'WhatsApp',email:'Email'})[c]).join(', ')}</div>`:''}</div></div>`).join('')}</div>`;
+}
+
+/* ---------- office ---------- */
+function vOffice(){
+  const tabs=[['overview','Today'],['attendance','Attendance'],['timetable','Timetable'],['parents','Parents'],['outbox','Message log']];
+  const view={overview:oOverview,attendance:oAttendance,timetable:oTimetable,parents:oParents,outbox:oOutbox}[ui.officeTab]();
+  return `<div class="page-head"><div><div class="eyebrow">School office</div><h2>Transport control</h2>
+    <p>Every bus, every child and every message sent today, for ${esc(S.school)}.</p></div>
+    <button class="btn ${ui.confirmReset?'ghost-bad':''}" data-act="reset">${ui.confirmReset?'Tap again to clear all demo data':'Reset demo'}</button></div>
+  <nav class="tabs">${tabs.map(([k,l])=>`<button data-act="otab" data-v="${k}" aria-pressed="${ui.officeTab===k}">${l}</button>`).join('')}</nav>${view}`;
+}
+function oOverview(){
+  const running=S.buses.filter(b=>['am','pm'].some(ty=>(getTrip(b.id,ty)||{}).status==='running')).length;
+  const onBoard=S.students.filter(k=>{const s=status(k).t;return s==='On the bus to school'||s==='On the bus home'||s==='Kept on bus'}).length;
+  const abs=S.students.filter(k=>K(getTrip(k.busId,'am'),k.id).absent).length;
+  const msgs=S.notifs.reduce((a,n)=>a+n.ch.length,0);
+  const alerts=S.notifs.filter(n=>n.kind==='bad');
+  const busOpts=`<option value="all">All buses</option>`+S.buses.map(b=>`<option value="${b.id}">${esc(b.code)} · ${esc(b.name)}</option>`).join('');
+  const areaOpts=`<option value="all">All areas</option>`+S.areas.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');
+  return `<div class="stack">
+    <div class="kpis"><div class="kpi"><span>Buses on route</span><b>${running} / ${S.buses.length}</b></div>
+      <div class="kpi"><span>Students on a bus now</span><b>${onBoard}</b></div>
+      <div class="kpi ${abs?'warnk':''}"><span>Did not board this morning</span><b>${abs}</b></div>
+      <div class="kpi"><span>Messages sent today</span><b>${msgs}</b></div></div>
+    ${alerts.length?`<div class="panel" style="border-color:var(--bad)"><div class="panel-head"><h3>Needs follow-up</h3><span class="pill bad">${alerts.length}</span></div>${feedList(alerts,'app',true)}</div>`:''}
+    <div class="grid2">
+      <div class="stack">${S.buses.map(busCard).join('')}</div>
+      <div class="stack">
+        <div class="panel"><div class="panel-head"><h3>Send a notice to parents</h3></div>
+          <div class="form"><div class="row2"><label>Bus<select id="bcBus">${busOpts}</select></label><label>Area<select id="bcArea">${areaOpts}</select></label></div>
+          <label>Message<textarea id="bcMsg" rows="3">Heavy traffic on Sheikh Mohammed Bin Zayed Road. Buses may be 10 to 15 minutes late this afternoon.</textarea></label>
+          <button class="btn primary" data-act="broadcast">Send notice</button></div></div>
+        <div class="panel"><h3 style="margin-bottom:10px">Taking this live</h3>
+          <ul class="notes-list">
+            <li><b>Parent app:</b> package this view as a PWA with Web Push, or a Flutter/React Native app with Firebase Cloud Messaging.</li>
+            <li><b>WhatsApp:</b> WhatsApp Business Cloud API with pre-approved templates for each alert type (boarded, absent, arrival, delay).</li>
+            <li><b>Email:</b> SMTP relay or a service such as SendGrid or Amazon SES, sent from the school domain.</li>
+            <li><b>Backend:</b> one API and database (students, parents, buses, area timetable, trip events) so the attendant's tap reaches every parent's device.</li>
+            <li><b>Consent:</b> collect WhatsApp and email opt-in at enrolment, and keep student data within UAE PDPL requirements.</li>
+          </ul></div>
+      </div>
+    </div></div>`;
+}
+function busCard(b){
+  const type=getTrip(b.id,'pm')?'pm':'am',t=getTrip(b.id,type),st=stops(b,type),d=tripDelay(b,type,t);
+  const state=!t?`<span class="pill idle">Not started</span>`:t.status==='done'?`<span class="pill ok">${type==='am'?'Morning':'Afternoon'} trip done</span>`
+    :`<span class="pill ${d>=10?'warn':'info'}">${type==='am'?'Morning':'Afternoon'} · ${delayText(d)}</span>`;
+  const onb=kidsOn(b.id).filter(k=>{const x=K(t,k.id);return x.in&&!x.out}).length;
+  const nodes=st.map((s,i)=>{const done=t&&(i<t.idx||t.status==='done'),cur=t&&t.status==='running'&&i===t.idx;const l=t?t.log[i]:{};
+    const tm=l.dep!=null?fmt(l.dep):l.arr!=null?fmt(l.arr):(s.arr||s.dep);
+    return `<div class="sn ${done?'done':''} ${cur?'cur':''}"><i></i><b>${s.kind==='school'?'School':esc(aname(s.areaId))}</b><span>${tm}</span></div>`}).join('');
+  return `<div class="bus-card"><div class="stop-head"><div class="meta"><span class="code">${esc(b.code)}</span><b>${esc(b.name)}</b>${plate(b.plate)}</div>${state}</div>
+    <div class="strip-wrap"><div class="strip">${nodes}</div></div>
+    <div class="meta"><span>On board <b>${onb}</b> of ${kidsOn(b.id).length}</span><span>Attendant <b>${esc(b.attendant)}</b></span><span>Driver <b>${esc(b.driver)}</b></span></div></div>`;
+}
+function oAttendance(){
+  const cell=(x,type)=>{if(!x||(!x.in&&!x.absent))return '<span class="muted">—</span>';
+    if(x.absent)return `<span class="pill ${type==='am'?'warn':'bad'}">Absent ${fmt(x.absent.t)}</span>`;
+    return `<span class="t">IN ${fmt(x.in.t)}</span>${x.out?` <span class="t">· OUT ${fmt(x.out.t)}</span>`:x.kept?' <span class="pill bad">Kept</span>':''}`};
+  return `<div class="tbl-wrap"><table><thead><tr><th>Student</th><th>Bus · Area</th><th>Morning (log in · log out)</th><th>Afternoon (log in · log out)</th><th>Now</th></tr></thead><tbody>
+    ${S.students.map(k=>{const st=status(k);return `<tr><td><b>${esc(k.name)}</b><div class="small muted">${esc(k.grade)}</div></td><td>${esc(bus(k.busId).code)} · ${esc(aname(k.areaId))}</td>
+      <td>${cell(K(getTrip(k.busId,'am'),k.id),'am')}</td><td>${cell(K(getTrip(k.busId,'pm'),k.id),'pm')}</td><td><span class="pill ${st.c}">${esc(st.t)}</span></td></tr>`}).join('')}
+  </tbody></table></div>`;
+}
+function oTimetable(){
+  return `<p class="muted" style="margin-top:0;max-width:70ch">Scheduled times per area. Parents see these as their pickup and drop times, and delay alerts compare the bus's real times against them.</p>
+  <div class="stack">${S.buses.map(b=>`<div class="panel"><div class="panel-head"><h3><span class="code">${esc(b.code)}</span> ${esc(b.name)}</h3>${plate(b.plate)}</div>
+    <div class="tbl-wrap"><table><thead><tr><th>Area</th><th>Morning arrive</th><th>Morning leave</th><th>Afternoon arrive</th><th>Afternoon leave</th><th>Students</th></tr></thead><tbody>
+    ${b.stops.map((s,i)=>`<tr><td><b>${esc(aname(s.areaId))}</b></td>
+      ${['am.arr','am.dep','pm.arr','pm.dep'].map(f=>{const [x,y]=f.split('.');return `<td><input type="time" id="tt-${b.id}-${i}-${x}-${y}" data-tt="${b.id}|${i}|${x}|${y}" value="${s[x][y]}"></td>`}).join('')}
+      <td>${kidsAt(b.id,s.areaId).length}</td></tr>`).join('')}
+    <tr><td><b>School</b></td><td><input type="time" id="tt-${b.id}-schoolAm" data-ts="${b.id}|schoolAm" value="${b.schoolAm}"></td><td class="muted">—</td><td class="muted">—</td>
+      <td><input type="time" id="tt-${b.id}-schoolPm" data-ts="${b.id}|schoolPm" value="${b.schoolPm}"></td><td>${kidsOn(b.id).length}</td></tr>
+    </tbody></table></div></div>`).join('')}</div>`;
+}
+function oParents(){
+  return `<p class="muted" style="margin-top:0;max-width:70ch">App alerts are always on. Choose which parents also get WhatsApp and email.</p>
+  <div class="tbl-wrap"><table><thead><tr><th>Parent</th><th>Children</th><th>Mobile</th><th>Email</th><th>App</th><th>WhatsApp</th><th>Email</th></tr></thead><tbody>
+  ${S.parents.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(S.students.filter(s=>s.parentId===p.id).map(s=>`${s.name} (${aname(s.areaId)})`).join(', '))}</td>
+    <td class="t">${esc(p.phone)}</td><td>${esc(p.email)}</td>
+    <td><input type="checkbox" class="check" checked disabled aria-label="App alerts for ${esc(p.name)}"></td>
+    <td><input type="checkbox" class="check" id="ch-${p.id}-wa" data-ch="${p.id}|wa" ${p.ch.wa?'checked':''} aria-label="WhatsApp for ${esc(p.name)}"></td>
+    <td><input type="checkbox" class="check" id="ch-${p.id}-email" data-ch="${p.id}|email" ${p.ch.email?'checked':''} aria-label="Email for ${esc(p.name)}"></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function oOutbox(){
+  const rows=[];S.notifs.forEach(n=>n.ch.forEach(c=>{if(ui.outCh==='all'||ui.outCh===c)rows.push({n,c})}));
+  const p=n=>par(n.parentId);
+  const lab={app:'App',wa:'WhatsApp',email:'Email'};
+  return `<div class="panel-head"><span class="muted">${rows.length} message${rows.length!==1?'s':''}</span>
+    <div class="seg" role="group" aria-label="Channel">${['all','app','wa','email'].map(c=>`<button data-act="outch" data-v="${c}" aria-pressed="${ui.outCh===c}">${c==='all'?'All':lab[c]}</button>`).join('')}</div></div>
+  ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th>Time</th><th>Channel</th><th>To</th><th>Message</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(({n,c})=>`<tr><td class="t">${fmt(n.t)}</td><td><span class="pill ${c==='wa'?'ok':c==='email'?'info':'acc'}">${lab[c]}</span></td>
+    <td>${esc(p(n).name)}<div class="small muted ${c!=='email'?'t':''}">${c==='wa'?esc(p(n).phone):c==='email'?esc(p(n).email):'Parent app'}</div></td>
+    <td><b>${esc(n.title)}</b></td><td><span class="small muted">Simulated</span></td></tr>`).join('')}</tbody></table></div>`
+  :`<div class="empty">No messages yet. Start a route from the Bus attendant view.</div>`}`;
+}
+
+/* ---------- events ---------- */
+let toastT;
+function toast(msg,err){const el=$('#toast');el.textContent=msg;el.classList.toggle('err',!!err);el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2600)}
+function run(fn){
+  const n0=S.notifs.length,r=fn();
+  if(typeof r==='string'){toast(r,true);return}
+  save();render();
+  const n=S.notifs.length-n0;
+  if(n>0){const m=S.notifs.slice(0,n).reduce((a,x)=>a+x.ch.length,0);toast(`${n} parent alert${n>1?'s':''} sent (${m} message${m>1?'s':''})`)}
+}
+const ACT={
+  role:d=>{ui.role=d.v;ui.confirmReset=false;save();render();window.scrollTo(0,0)},
+  bus:d=>{ui.busId=d.v;save();render()},
+  ttype:d=>{ui.tripType=d.v;save();render()},
+  start:()=>run(()=>startTrip(ui.busId,ui.tripType)),
+  arrive:d=>run(()=>arrive(ui.busId,ui.tripType,+d.i)),
+  depart:d=>run(()=>depart(ui.busId,ui.tripType,+d.i)),
+  board:d=>run(()=>board(ui.busId,ui.tripType,d.s)),
+  absent:d=>run(()=>absent(ui.busId,ui.tripType,d.s,false)),
+  drop:d=>run(()=>drop(ui.busId,d.s)),
+  keep:d=>run(()=>keep(ui.busId,d.s)),
+  resetTrip:()=>{delete (S.trips[ui.busId]||{})[ui.tripType];
+    if(ui.tripType==='am'){delete (S.trips[ui.busId]||{}).pm}
+    save();render()},
+  feed:d=>{ui.feedCh=d.v;save();render()},
+  otab:d=>{ui.officeTab=d.v;ui.confirmReset=false;save();render()},
+  outch:d=>{ui.outCh=d.v;render()},
+  clockRun:()=>{ui.clockRun=!ui.clockRun;renderClock()},
+  clockAdd:d=>{S.clock+=+d.v;save();render()},
+  clockSet:d=>{S.clock=+d.v;save();render()},
+  reset:()=>{if(!ui.confirmReset){ui.confirmReset=true;render();return}
+    S=seed();ui.confirmReset=false;save();render();toast('Demo data cleared')},
+  broadcast:()=>{const msg=$('#bcMsg').value.trim();if(!msg){toast('Write a message first.',true);return}
+    let n=0;run(()=>{n=broadcast($('#bcBus').value,$('#bcArea').value,msg)});if(!n)toast('No students match that bus and area.',true)}
+};
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f)f(el.dataset,el)});
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.id==='parentSel'){ui.parentId=el.value;save();render();return}
+  if(el.dataset.tt){const [bid,i,x,y]=el.dataset.tt.split('|');if(el.value){bus(bid).stops[+i][x][y]=el.value;save();toast('Timetable updated')}return}
+  if(el.dataset.ts){const [bid,f]=el.dataset.ts.split('|');if(el.value){bus(bid)[f]=el.value;save();toast('Timetable updated')}return}
+  if(el.dataset.ch){const [pid,c]=el.dataset.ch.split('|');par(pid).ch[c]=el.checked;save();toast(`${c==='wa'?'WhatsApp':'Email'} alerts ${el.checked?'on':'off'} for ${par(pid).name}`)}
+});
+setInterval(()=>{if(!ui.clockRun)return;const before=Math.floor(S.clock);S.clock+=1/60;if(Math.floor(S.clock)!==before){renderClock();if(Math.floor(S.clock)%2===0)save()}},1000);
+
+load();render();
+})();
+</script>
